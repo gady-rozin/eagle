@@ -3,52 +3,27 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>מעבד קבצי CSV</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            direction: rtl;
-            text-align: right;
-            padding: 20px;
-        }
-        .container {
-            border: 1px solid #ccc;
-            padding: 20px;
-            border-radius: 8px;
-            max-width: 600px;
-            margin: 0 auto;
-            background-color: #f9f9f9;
-        }
-        button {
-            padding: 10px 15px;
-            font-size: 16px;
-            cursor: pointer;
-            background-color: #007bff;
-            color: white;
-            border: none;
-            border-radius: 5px;
-        }
-        button:hover {
-            background-color: #0056b3;
-        }
-        #lastDirectoryInfo {
-            margin-bottom: 10px;
-            font-style: italic;
-            color: #555;
-        }
-        #status {
-            margin-top: 20px;
-            font-weight: bold;
-        }
-    </style>
+    <title>מעבד קבצי CSV חתולי</title>
+    <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@400;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css"> 
 </head>
 <body>
     <div class="container">
-        <h1>עיבוד קבצי CSV</h1>
-        <p>לחץ על הכפתור כדי לבחור תיקייה המכילה קובצי CSV לעיבוד.</p>
-        <div id="lastDirectoryInfo"></div>
-        <button onclick="processFiles()">בחר תיקייה והתחל עיבוד</button>
-        <div id="status"></div>
+        <header>
+            <img src="https://unsplash.it/200/200?random" alt="תמונה של חתול חמוד" class="cat-image">
+            <h1><span class="highlight">מעבד</span> קבצי CSV</h1>
+            <p class="subtitle">כלי חתולי ויעיל לעיבוד קבצי הנתונים שלך</p>
+        </header>
+        
+        <main>
+            <div id="lastDirectoryInfo" class="info-message"></div>
+            <button onclick="processFiles()" class="action-button">בחר תיקייה והתחל עיבוד</button>
+            <div id="status" class="status-message"></div>
+        </main>
+        
+        <footer>
+            <p>&copy; 2023 CSV Cat Processor. כל הזכויות שמורות.</p>
+        </footer>
     </div>
 
     <script src="script.js"></script>
