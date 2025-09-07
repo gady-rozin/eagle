@@ -70,6 +70,7 @@ async function processFiles() {
  * מעבד את תוכן ה-CSV ומחזיר את התוכן בפורמט החדש.
  * @param {string} csvText - תוכן קובץ ה-CSV המקורי.
  * @returns {string} - תוכן ה-CSV בפורמט החדש.
+ * "#1 - Merkaz Mevakrim", 2025-09-05, 23:20:00, 63.45
  */
 function processCsvContent(csvText) {
     const lines = csvText.split('\n');
