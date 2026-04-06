@@ -4,6 +4,8 @@ const statusEl = document.getElementById("status");
 
 let globalValues = [];
 let globalTimestamps = [];
+let cachedData = null;
+
 
 document.getElementById("fileInput").addEventListener("change", async (e) => {
     const file = e.target.files[0];

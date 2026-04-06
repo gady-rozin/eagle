@@ -46,7 +46,7 @@ def run_analysis(values, timestamps, USE_RBL=True, WINDOW = 8, PENALTY=10, SMOOT
             })
         return stats
 
-    def filter_changes(changes, min_size=300):
+    def filter_changes(changes, min_size=100):
         filtered = []
         prev = 0
         for cp in changes:
@@ -71,7 +71,7 @@ def run_analysis(values, timestamps, USE_RBL=True, WINDOW = 8, PENALTY=10, SMOOT
         signal = smooth(derivative, SMOOTH_WIN)
         algo = rpt.Pelt(model="l2").fit(signal)
         changes = algo.predict(pen=PENALTY)
-        filtered_changes = filter_changes(changes, min_size=300)
+        filtered_changes = filter_changes(changes, min_size=100)
 
     stats = calculate_segment_stats(data=df, change_points=filtered_changes)
     
