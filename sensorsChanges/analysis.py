@@ -64,6 +64,8 @@ def run_analysis(values, timestamps, USE_RBL=True, WINDOW = 8, PENALTY=10, SMOOT
     derivative = np.gradient(area_signal)
 
     if USE_RBL:
+        #algo = rpt.Binseg(model="rbf").fit(derivative)
+        #changes = algo.predict(n_bkps=6)
         algo = rpt.Pelt(model="rbf").fit(derivative)
         changes =  algo.predict(pen=PENALTY)
         filtered_changes = [int(cp) for cp in changes if cp < len(df)]
