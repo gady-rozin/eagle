@@ -80,6 +80,7 @@
 <h2>Sensor Change Detection</h2>
 
 <input type="file" id="fileInput" />
+<p id="status">Idle</p>
 
 <div class="controls">
 
@@ -106,13 +107,10 @@
     <input type="number" id="smooth" value="25" />
   </div>
 
-  <div class="control-group button-group">
-    <button id="runBtn">Run Detection</button>
-  </div>
-
 </div>
-
-<p id="status">Idle</p>
+<div class="control-group button-group">
+    <button id="runBtn">Run Detection</button>
+</div>
 
 <canvas id="chart"></canvas>
 
