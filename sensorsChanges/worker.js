@@ -7,7 +7,7 @@ let pyodideReady = loadPyodide({
 let initialized = false;
 
 self.onmessage = async (event) => {
-    const { values, timestamps } = event.data;
+    const { values, timestamps, USE_RBL, WINDOW, PENALTY, SMOOTH_WIN } = event.data;
     const pyodide = await pyodideReady;
 
     if (!initialized) {
@@ -30,8 +30,11 @@ self.onmessage = async (event) => {
     // Pass data to Python globals
     pyodide.globals.set("values", values.toPy ? values.toPy() : values);
     pyodide.globals.set("timestamps", timestamps.toPy ? timestamps.toPy() : timestamps);
-    // pyodide.globals.set("values", values);
-    //pyodide.globals.set("timestamps", timestamps);
+    pyodide.globals.set("timestamps", timestamps.toPy ? timestamps.toPy() : timestamps);
+    pyodide.globals.set("USE_RBL", USE_RBL);
+    pyodide.globals.set("WINDOW", WINDOW);
+    pyodide.globals.set("PENALTY", PENALTY);
+    pyodide.globals.set("SMOOTH_WIN", SMOOTH_WIN);
 
     // 4. Run the code by importing the written module
     // We use importlib.reload to ensure changes to the .py file are picked up if it changes
@@ -42,7 +45,7 @@ self.onmessage = async (event) => {
         
         # This assumes your logic is wrapped in a function inside analysis.py
         # Or you can just run specific logic from the module
-        analysis_module.run_analysis(values, timestamps)
+        analysis_module.run_analysis(values, timestamps,USE_RBL=USE_RBL, WINDOW=WINDOW, PENALTY=PENALTY, SMOOTH_WIN=SMOOTH_WIN)
     `);
 
     self.postMessage(result.toJs());

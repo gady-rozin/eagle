@@ -3,18 +3,10 @@ import numpy as np
 import pandas as pd
 import ruptures as rpt
 
-def run_analysis(values, timestamps):
+
+def run_analysis(values, timestamps, USE_RBL=True, WINDOW = 8, PENALTY=10, SMOOTH_WIN = 25):
     VALUE_COL = "value"
     DATE_COL = "timestamp"
-
-    USE_RBL = True
-    if USE_RBL:
-        WINDOW = 8
-        PENALTY = 10
-    else: # l2
-        WINDOW = 8
-        PENALTY = 100
-    SMOOTH_WIN = 25
 
     def smooth(signal, window):
         return np.convolve(signal, np.ones(window)/window, mode='same')

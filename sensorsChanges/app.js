@@ -9,19 +9,34 @@ document.getElementById("fileInput").addEventListener("change", async (e) => {
     const file = e.target.files[0];
     if (!file) return;
 
-    statusEl.innerText = "Reading CSV...";
-
     const text = await file.text();
-    const { values, timestamps } = parseCSV(text);
+    cachedData = parseCSV(text);
 
-    globalValues = values;
-    globalTimestamps = timestamps;
+    document.getElementById("status").innerText = "CSV loaded. Click Run.";
+});
 
-    statusEl.innerText = `Loaded ${values.length} rows. Processing...`;
+document.getElementById("runBtn").addEventListener("click", () => {
+    if (!cachedData) {
+        alert("Please load a CSV first");
+        return;
+    }
+
+    const params = {
+        algo: document.getElementById("algo").value,
+        window: parseInt(document.getElementById("window").value),
+        penalty: parseInt(document.getElementById("penalty").value),
+        smooth: parseInt(document.getElementById("smooth").value)
+    };
+
+    document.getElementById("status").innerText = "Processing...";
 
     worker.postMessage({
-        values: Float64Array.from(values),
-        timestamps
+        values: Float64Array.from(cachedData.values),
+        timestamps: cachedData.timestamps,
+        USE_RBL: params.algo === "rbf",
+        WINDOW: params.window,
+        PENALTY: params.penalty,
+        SMOOTH_WIN: params.smooth
     });
 });
 
@@ -63,20 +78,6 @@ function parseCSV(text) {
     }
 
     return { values, timestamps };
-}
-
-// 🔥 IMPORTANT for 100K+
-function downsample(data, maxPoints = 2000) {
-    if (data.length <= maxPoints) return data;
-
-    const factor = Math.ceil(data.length / maxPoints);
-    const result = [];
-
-    for (let i = 0; i < data.length; i += factor) {
-        result.push(data[i]);
-    }
-
-    return result;
 }
 
 function drawChart(labels, data, cps) {
