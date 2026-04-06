@@ -8,99 +8,41 @@ let initialized = false;
 
 self.onmessage = async (event) => {
     const { values, timestamps } = event.data;
-
     const pyodide = await pyodideReady;
 
     if (!initialized) {
-        await pyodide.loadPackage("micropip");
+        // 1. Install dependencies
+        await pyodide.loadPackage(["micropip", "pandas", "numpy"]);
         const micropip = pyodide.pyimport("micropip");
-
         await micropip.install("ruptures");
-        await micropip.install("pandas");
+
+        // 2. Fetch your external .py file
+        // Ensure the path is correct relative to your server root
+        const response = await fetch("./analysis.py"); 
+        const pythonCode = await response.text();
+
+        // 3. Write the code to Pyodide's internal file system
+        pyodide.FS.writeFile("analysis_module.py", pythonCode);
 
         initialized = true;
     }
 
-    pyodide.globals.set("values", values);
-    pyodide.globals.set("timestamps", timestamps);
+    // Pass data to Python globals
+    pyodide.globals.set("values", values.toPy ? values.toPy() : values);
+    pyodide.globals.set("timestamps", timestamps.toPy ? timestamps.toPy() : timestamps);
+    // pyodide.globals.set("values", values);
+    //pyodide.globals.set("timestamps", timestamps);
 
+    // 4. Run the code by importing the written module
+    // We use importlib.reload to ensure changes to the .py file are picked up if it changes
     const result = pyodide.runPython(`
-import numpy as np
-import pandas as pd
-import ruptures as rpt
-
-VALUE_COL = "value"
-DATE_COL = "timestamp"
-WINDOW = 8
-PENALTY = 10
-
-
-def local_area(data, window=WINDOW):
-    y = data[VALUE_COL].astype(float).values
-    x = data[DATE_COL]
-    time_seconds = (x - x.iloc[0]).dt.total_seconds().to_numpy()
-
-    area_signal = np.zeros(len(y), dtype=float)
-
-    for i in range(window, len(y)):
-        y_segment = y[i-window:i]
-        t_segment = time_seconds[i-window:i]
-        area_signal[i] = np.trapezoid(y_segment, t_segment)
-
-    return area_signal
-
-
-
-def calculate_segment_stats(data, change_points):
-    y = data[VALUE_COL].astype(float).values
-    timestamps = data[DATE_COL]
-    time_seconds = (timestamps - timestamps.iloc[0]).dt.total_seconds().to_numpy()
-
-    boundaries = [0] + list(change_points)
-    if boundaries[-1] != len(df):
-        boundaries.append(len(df))
-
-    stats = []
-    for i in range(len(boundaries) - 1):
-        start = boundaries[i]
-        end = boundaries[i + 1]
-
-        segment = y[start:end]
-        if len(segment) == 0:
-            continue
-
-        segment_times = time_seconds[start:end]
-        area_size = np.trapezoid(segment, segment_times) if len(segment) > 1 else 0.0
-
-        stats.append({
-            "start": int(start),
-            "end": int(end),
-            "mean": float(np.mean(segment)),
-            "std": float(np.std(segment)),
-            "area": float(area_size)
-        })
-
-    return stats
-
-df = pd.DataFrame({
-    VALUE_COL: values,
-    DATE_COL: pd.to_datetime(timestamps, format='%d/%m/%Y %H:%M')
-})
-
-df = df.sort_values(DATE_COL).reset_index(drop=True)
-
-area_signal = local_area(data=df)
-derivative = np.gradient(area_signal)
-algo = rpt.Pelt(model="rbf").fit(derivative)  # l2 OR rbf
-changes =  algo.predict(pen=PENALTY)
-
-filtered_changes = [int(cp) for cp in changes if cp < len(df)]
-stats = calculate_segment_stats(data=df, change_points=filtered_changes)
-
-{
-    "changePoints": filtered_changes,
-    "stats": stats
-}
+        import analysis_module
+        import importlib
+        importlib.reload(analysis_module)
+        
+        # This assumes your logic is wrapped in a function inside analysis.py
+        # Or you can just run specific logic from the module
+        analysis_module.run_analysis(values, timestamps)
     `);
 
     self.postMessage(result.toJs());
