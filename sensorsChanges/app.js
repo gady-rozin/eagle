@@ -97,7 +97,6 @@ function drawChart(labels, data, cps) {
       labels,
       datasets
     },
-    /*
     options: {
       responsive: true,
       plugins: {
@@ -114,6 +113,6 @@ function drawChart(labels, data, cps) {
           }, {})
         }
       }
-    }*/
+    }
   });
 }
