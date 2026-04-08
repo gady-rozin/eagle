@@ -31,11 +31,18 @@ document.getElementById('sens').oninput = function() { document.getElementById('
 document.getElementById('win').oninput = function() { document.getElementById('winVal').innerText = this.value; analyze(); };
 
 // --- 2. Analysis Logic (Regime Shift) ---
-function analyze(algorithm = 'v2') {
+function analyze() {
+    algorithm = document.getElementById('algorithm').value;
     if (algorithm === 'v1') {
         analyze_v1();
-    } else {
+    } else if (algorithm === 'v2') {
         analyze_v2();
+    }
+    else if (algorithm === 'v3') {
+       analyze_v3();
+    }
+    else if (algorithm === 'v4') {
+        analyze_v4();
     }
 }
 
@@ -133,6 +140,102 @@ function analyze_v2() {
     calculateStats(vals);
 }
 
+function analyze_v3() {
+    if (!rawData.length) return;
+    const penalty = parseFloat(document.getElementById('sens').value);
+    const win = parseInt(document.getElementById('win').value);
+    const n = rawData.length;
+    let vals = rawData.map(d => d.val);
+
+    // 1. Median Filter - הסוד ליציבות (מנקה את ה-Spikes הצרים שרואים ב-JS)
+    // זה יגרום לגרף ה-JS להיראות "נקי" כמו בפייתון לפני הניתוח
+    let smoothVals = new Array(n);
+    for (let i = 0; i < n; i++) {
+        let half = Math.floor(win / 4);
+        let window = vals.slice(Math.max(0, i - half), Math.min(n, i + half));
+        window.sort((a, b) => a - b);
+        smoothVals[i] = window[Math.floor(window.length / 2)];
+    }
+
+    // 2. Cumulative Area על הערכים המוחלקים
+    let prefix = new Array(n).fill(0);
+    for (let i = 1; i < n; i++) {
+        prefix[i] = prefix[i-1] + (smoothVals[i-1] + smoothVals[i]) * 0.5;
+    }
+
+    // 3. Calculation of L2 Cost (דומה ל-RBF/L2 של PELT)
+    changePoints = [];
+    let scores = new Array(n).fill(0);
+    
+    for (let i = win * 2; i < n - win * 2; i++) {
+        let leftArea = (prefix[i] - prefix[i-win]) / win;
+        let rightArea = (prefix[i+win] - prefix[i]) / win;
+        
+        // שינוי בריבוע ההפרשים - נותן משקל גבוה לשינויי מגמה
+        scores[i] = Math.pow(leftArea - rightArea, 2);
+    }
+
+    // 4. Peak Selection עם סף קשיח יותר
+    const maxScore = Math.max(...scores);
+    const dynamicThreshold = maxScore * (penalty / 10);
+
+    for (let i = win * 2; i < n - win * 2; i++) {
+        if (scores[i] > dynamicThreshold && 
+            scores[i] === Math.max(...scores.slice(i - win, i + win))) {
+            
+            if (changePoints.length === 0 || i - changePoints[changePoints.length - 1] > win * 3) {
+                changePoints.push(i);
+            }
+        }
+    }
+
+    changePoints.push(n - 1);
+    render();
+    calculateStats(vals);
+}
+
+function analyze_v4() {
+    if (!rawData.length) return;
+    const penalty = parseFloat(document.getElementById('sens').value);
+    const win = parseInt(document.getElementById('win').value);
+    const n = rawData.length;
+    const originalVals = rawData.map(d => d.val);
+
+    // 1. החלקת הנתונים לתצוגה ולניתוח (בדומה לפייתון)
+    const filteredVals = smoothData(originalVals, win);
+
+    // 2. חישוב שטח מצטבר על הנתונים המוחלקים
+    let prefix = new Array(n).fill(0);
+    for (let i = 1; i < n; i++) {
+        prefix[i] = prefix[i-1] + (filteredVals[i-1] + filteredVals[i]) * 0.5;
+    }
+
+    // 3. זיהוי נקודות שינוי מבוסס על Cost Function (L2)
+    changePoints = [];
+    let scores = new Array(n).fill(0);
+    for (let i = win; i < n - win; i++) {
+        let leftArea = (prefix[i] - prefix[i-win]) / win;
+        let rightArea = (prefix[i+win] - prefix[i]) / win;
+        scores[i] = Math.pow(leftArea - rightArea, 2);
+    }
+
+    const maxScore = Math.max(...scores);
+    const threshold = maxScore * (penalty / 10);
+
+    for (let i = win; i < n - win; i++) {
+        if (scores[i] > threshold && scores[i] === Math.max(...scores.slice(i - win, i + win))) {
+            if (changePoints.length === 0 || i - changePoints[changePoints.length - 1] > win * 2) {
+                changePoints.push(i);
+            }
+        }
+    }
+    changePoints.push(n - 1);
+
+    // 4. רינדור עם הגרף המוחלק
+    render_v4(filteredVals); // שים לב: אנחנו מעבירים את הערכים המוחלקים
+    calculateStats(originalVals); // סטטיסטיקה נשארת על המקור
+}
+
 // --- 3. Visualization ---
 function render() {
     const w = canvas.width = canvas.offsetWidth * 2;
@@ -195,6 +298,99 @@ function render() {
         const text = rawData[idx].ts.split(' ')[0]; // Show date only
         ctx.fillText(text, x - 20, height + 20);
     }
+}
+
+function render_v4(displayVals) {
+    const w = canvas.width = canvas.offsetWidth * 2;
+    const h = canvas.height = canvas.offsetHeight * 2;
+    ctx.scale(2, 2);
+    const width = canvas.offsetWidth;
+    const height = canvas.offsetHeight - 40;
+    
+    // חישוב מחדש של ה-Scores לצורך הצגתם
+    const win = parseInt(document.getElementById('win').value);
+    const n = displayVals.length;
+    let prefix = new Array(n).fill(0);
+    for (let i = 1; i < n; i++) prefix[i] = prefix[i-1] + (displayVals[i-1] + displayVals[i]) * 0.5;
+    
+    let scores = new Array(n).fill(0);
+    for (let i = win; i < n - win; i++) {
+        let left = (prefix[i] - prefix[i-win]) / win;
+        let right = (prefix[i+win] - prefix[i]) / win;
+        scores[i] = Math.pow(left - right, 2);
+    }
+
+    const max = Math.max(...displayVals) * 1.1;
+    const step = width / (n - 1);
+
+    ctx.clearRect(0, 0, width, height + 40);
+
+    // 1. צביעת השטח מתחת לגרף
+    ctx.beginPath();
+    ctx.moveTo(0, height);
+    displayVals.forEach((v, i) => ctx.lineTo(i * step, height - (v / max * height)));
+    ctx.lineTo(width, height);
+    ctx.fillStyle = 'rgba(52, 152, 219, 0.15)';
+    ctx.fill();
+
+    // 2. קו הגרף המרכזי
+    ctx.beginPath();
+    ctx.strokeStyle = '#2980b9';
+    ctx.lineWidth = 1.8;
+    displayVals.forEach((v, i) => {
+        const x = i * step;
+        const y = height - (v / max * height);
+        i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+    });
+    ctx.stroke();
+
+    // 3. קווי נקודות שינוי ותוויות ציון (Scores)
+    changePoints.slice(0, -1).forEach(cp => {
+        const x = cp * step;
+        
+        // קו אדום
+        ctx.setLineDash([5, 5]);
+        ctx.strokeStyle = 'rgba(231, 76, 60, 0.8)';
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.moveTo(x, 0);
+        ctx.lineTo(x, height);
+        ctx.stroke();
+        ctx.setLineDash([]);
+
+        // בועת טקסט עם הציון (Score)
+        const scoreVal = scores[cp].toFixed(1);
+        ctx.font = "bold 10px Arial";
+        const textWidth = ctx.measureText(scoreVal).width;
+        
+        ctx.fillStyle = "#e74c3c";
+        ctx.fillRect(x - (textWidth/2) - 4, 5, textWidth + 8, 16); // רקע לטקסט
+        
+        ctx.fillStyle = "white";
+        ctx.fillText(scoreVal, x - (textWidth/2), 17);
+    });
+
+    // 4. ציר X (תאריכים)
+    ctx.fillStyle = "#7f8c8d";
+    ctx.font = "10px sans-serif";
+    for (let i = 0; i < 6; i++) {
+        const idx = Math.floor((i / 5) * (n - 1));
+        const x = idx * step;
+        ctx.fillText(rawData[idx].ts.split(' ')[0], x - 25, height + 20);
+    }
+}
+
+// --- Smooth (Moving Average / Median) ---
+function smoothData(data, windowSize) {
+    let result = [];
+    for (let i = 0; i < data.length; i++) {
+        let start = Math.max(0, i - Math.floor(windowSize / 2));
+        let end = Math.min(data.length, i + Math.floor(windowSize / 2));
+        let window = data.slice(start, end);
+        let avg = window.reduce((a, b) => a + b, 0) / window.length;
+        result.push(avg);
+    }
+    return result;
 }
 
 // --- 4. Statistics Calculation ---
