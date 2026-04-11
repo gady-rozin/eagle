@@ -13,7 +13,8 @@ document.getElementById('csvFile').addEventListener('change', e => {
         const lines = event.target.result.split('\n').filter(l => l.trim());
         const headers = lines[0].split(',').map(h => h.trim());
         
-        const tsIdx = headers.findIndex(h => h.toLowerCase().includes('timestamp'));
+        const rdlStatusIdx = headers.findIndex(h => h.toLowerCase().includes('rdl_status'));
+        const tsIdx = headers.findIndex(h => h.toLowerCase().includes('timestamp_real'));
         const valIdx = headers.findIndex(h => h.includes('PM_N'));
 
         rawData = lines.slice(1).map(line => {
@@ -21,14 +22,43 @@ document.getElementById('csvFile').addEventListener('change', e => {
             return { ts: cols[tsIdx], val: parseFloat(cols[valIdx]) };
         }).filter(d => !isNaN(d.val));
         
-        analyze();
+        //analyze();
     };
     reader.readAsText(file);
 });
 
 // Update logic for sliders
-document.getElementById('sens').oninput = function() { document.getElementById('sensVal').innerText = this.value; analyze(); };
-document.getElementById('win').oninput = function() { document.getElementById('winVal').innerText = this.value; analyze(); };
+document.getElementById('sens').oninput = function() { document.getElementById('sensVal').innerText = this.value; /*analyze();*/ };
+document.getElementById('win').oninput = function() { document.getElementById('winVal').innerText = this.value; /*analyze();*/ };
+
+// --- מימוש CostRbf (Kernel Change Point) ---
+function calculateCostRbf(segment) {
+    const n = segment.length;
+    if (n < 2) return 0;
+
+    // 1. Median Heuristic לחישוב ה-Bandwidth (gamma)
+    // ב-ruptures, gamma נקבע לפי חציון המרחקים בין הנקודות
+    let distances = [];
+    for (let i = 0; i < Math.min(n, 100); i++) { // דגימה לביצועים
+        for (let j = i + 1; j < Math.min(n, 100); j++) {
+            distances.push(Math.abs(segment[i] - segment[j]));
+        }
+    }
+    distances.sort((a, b) => a - b);
+    let medianDist = distances[Math.floor(distances.length / 2)] || 1;
+    let gamma = 1.0 / (medianDist * medianDist || 1);
+
+    // 2. חישוב עלות הסגמנט לפי הנוסחה: n - (1/n) * sum(K(xi, xj))
+    let sumK = 0;
+    for (let i = 0; i < n; i++) {
+        for (let j = 0; j < n; j++) {
+            let diff = segment[i] - segment[j];
+            sumK += Math.exp(-gamma * diff * diff);
+        }
+    }
+    
+    return n - (sumK / n);
+}
 
 // --- 2. Analysis Logic (Regime Shift) ---
 function analyze() {
@@ -43,6 +73,9 @@ function analyze() {
     }
     else if (algorithm === 'v4') {
         analyze_v4();
+    }
+    else if (algorithm === 'v5') {
+        analyze_v5();
     }
 }
 
@@ -223,7 +256,7 @@ function analyze_v4() {
     const threshold = maxScore * (penalty / 10);
 
     for (let i = win; i < n - win; i++) {
-        if (scores[i] > threshold && scores[i] === Math.max(...scores.slice(i - win, i + win))) {
+        if (scores[i] > threshold && scores[i] === Math.max(...scores.slice(i - win, i + win)) && scores[i] > 5.0) {
             if (changePoints.length === 0 || i - changePoints[changePoints.length - 1] > win * 2) {
                 changePoints.push(i);
             }
@@ -232,8 +265,55 @@ function analyze_v4() {
     changePoints.push(n - 1);
 
     // 4. רינדור עם הגרף המוחלק
-    render_v4(filteredVals); // שים לב: אנחנו מעבירים את הערכים המוחלקים
+    render_smooth(filteredVals); // שים לב: אנחנו מעבירים את הערכים המוחלקים
     calculateStats(originalVals); // סטטיסטיקה נשארת על המקור
+}
+
+function analyze_v5() {
+    if (!rawData.length) return;
+    const penalty = parseFloat(document.getElementById('sens').value) * 5; 
+    const win = parseInt(document.getElementById('win').value); // משמש כ-min_size
+    const vals = rawData.map(d => d.val);
+    const n = vals.length;
+
+    changePoints = [0];
+    
+    // מימוש אלגוריתם חיפוש (Sliding Window Kernel Cost)
+    // הערה: PELT מלא ב-JS עלול להיות איטי, לכן נשתמש ב-Greedy Search על בסיס CostRbf
+    let currentIndex = 0;
+    while (currentIndex < n - win) {
+        let bestBreak = -1;
+        let minTotalCost = Infinity;
+
+        // מחפשים את הנקודה הבאה שממקסמת את השינוי בגרעין (RBF)
+        let searchEnd = Math.min(currentIndex + win * 4, n - win);
+        
+        for (let t = currentIndex + win; t < searchEnd; t++) {
+            let leftSeg = vals.slice(currentIndex, t);
+            let rightSeg = vals.slice(t, Math.min(t + win, n));
+            
+            let costLeft = calculateCostRbf(leftSeg);
+            let costRight = calculateCostRbf(rightSeg);
+            let costCombined = calculateCostRbf(vals.slice(currentIndex, Math.min(t + win, n)));
+            
+            // הרווח מהפיצול (Gain)
+            let gain = costCombined - (costLeft + costRight);
+            
+            if (gain > penalty) {
+                changePoints.push(t);
+                currentIndex = t;
+                bestBreak = t;
+                break;
+            }
+        }
+        
+        if (bestBreak === -1) currentIndex += win;
+    }
+
+    if (changePoints[changePoints.length-1] !== n-1) changePoints.push(n - 1);
+
+    render_smooth(vals);
+    calculateStats(vals);
 }
 
 // --- 3. Visualization ---
@@ -300,7 +380,7 @@ function render() {
     }
 }
 
-function render_v4(displayVals) {
+function render_smooth(displayVals) {
     const w = canvas.width = canvas.offsetWidth * 2;
     const h = canvas.height = canvas.offsetHeight * 2;
     ctx.scale(2, 2);
