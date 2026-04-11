@@ -12,15 +12,24 @@ document.getElementById('csvFile').addEventListener('change', e => {
     reader.onload = (event) => {
         const lines = event.target.result.split('\n').filter(l => l.trim());
         const headers = lines[0].split(',').map(h => h.trim());
-        
-        const rdlStatusIdx = headers.findIndex(h => h.toLowerCase().includes('rdl_status'));
-        const tsIdx = headers.findIndex(h => h.toLowerCase().includes('timestamp_real'));
-        const valIdx = headers.findIndex(h => h.includes('PM_N'));
+
+        const tsIdx = headers.findIndex(h => h === 'timestamp_real');
+        const valIdx = headers.findIndex(h => h === 'PM_N');
+        const rdlStatusIdx = headers.findIndex(h => h === 'RDL_Status');
+        const pmStatusIdx = headers.findIndex(h => h === 'PM_status');
 
         rawData = lines.slice(1).map(line => {
-            const cols = line.split(',');
-            return { ts: cols[tsIdx], val: parseFloat(cols[valIdx]) };
-        }).filter(d => !isNaN(d.val));
+            const cols = line.split(',').map(col => col.trim());
+            const hasRdl95 = rdlStatusIdx !== -1 && cols[rdlStatusIdx] === '95';
+            const hasPm1 = pmStatusIdx !== -1 && cols[pmStatusIdx] === '1';
+
+            if (!hasRdl95 || !hasPm1) return null;
+
+            return {
+                ts: cols[tsIdx],
+                val: parseFloat(cols[valIdx])
+            };
+        }).filter(d => d && d.ts && !isNaN(d.val));
         
         //analyze();
     };
