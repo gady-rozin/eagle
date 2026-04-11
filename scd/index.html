@@ -28,26 +28,27 @@
             <input type="file" id="csvFile" accept=".csv">
         </div>
         <div>
-            <label>2. Sensitivity: <span id="sensVal">2.0</span></label>
-            <input type="range" id="sens" min="0.5" max="10" step="0.1" value="2.0">
+            <label>2. Sensitivity: <span id="sensVal">10.0</span></label>
+            <input type="range" id="sens" min="0.5" max="30" step="0.1" value="10.0">
         </div>
         <div>
-            <label>3. Window Size: <span id="winVal">30</span></label>
-            <input type="range" id="win" min="5" max="100" value="30">
+            <label>3. Window Size: <span id="winVal">8</span></label>
+            <input type="range" id="win" min="2" max="100" value="8">
         </div>
         <div>
             <label>4. Algorithm</label>
             <select id="algorithm" onchange="analyze(this.value)">
+                <option value="v5">Area + Median Filter+ RBF + Smooth (v5)</option>
                 <option value="v4">Area + Median Filter+ L2 + Smooth (v4)</option>
                 <option value="v3">Area + Median Filter+ L2 (v3)</option>
                 <option value="v2">Area + Variance (v2)</option>
                 <option value="v1">Area Only (v1)</option>
             </select>
         </div>
-
-        <div style="margin-left:auto">
-            <button class="btn-export" onclick="exportStats()">Export Results</button>
+         <div style="margin-left:auto">
+            <button class="btn-export" onclick="analyze()">Analyze</button>
         </div>
+
     </div>
 
     <canvas id="mainCanvas"></canvas>
@@ -65,6 +66,9 @@
         </thead>
         <tbody id="statsBody"></tbody>
     </table>
+    <div style="margin-left:auto">
+        <button class="btn-export" onclick="exportStats()">Export Results</button>
+    </div>
 </div>
 
 <script src="scd.js"></script>
