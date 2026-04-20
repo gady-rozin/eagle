@@ -3,7 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>PM Change Point Detector</title>
+<link rel="icon" type="image/x-icon" href="nesher-favicon.png">
+<title>Sensors Change Point Detection</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Syne:wght@400;700;800&display=swap');
@@ -254,10 +255,9 @@
 
   <header>
     <div class="logo">
-      <div class="logo-title">PM<span>.</span>detect</div>
-      <div class="logo-sub">Change Point Analysis · PELT / RBF</div>
+      <div class="logo-title">Sensors Change Point Analysis</div>
+      <div class="logo-sub">Nesher Israeli Cement</div>
     </div>
-    <div class="badge">client-side</div>
   </header>
 
   <!-- DROP ZONE -->
@@ -265,9 +265,11 @@
     <input type="file" id="fileInput" accept=".csv">
     <div class="drop-icon">⬆</div>
     <div class="drop-title">Drop your CSV here</div>
-    <div class="drop-sub">Expected columns: timestamp_real, PM_N &nbsp;·&nbsp; 30-min intervals</div>
   </div>
-
+  <div class="status" id="status">
+    <div class="status-dot wait"></div>
+    waiting for CSV file...
+  </div>
   <!-- CONTROLS -->
   <div class="controls">
     <div class="ctrl">
@@ -284,42 +286,9 @@
         <span class="ctrl-val" id="penaltyVal">10</span>
       </div>
     </div>
-    <div class="ctrl">
-      <label>Value column</label>
-      <div class="ctrl-inner">
-        <input type="text" id="colName" value="PM_N"
-          style="flex:1;background:transparent;border:none;outline:none;color:var(--accent);font-family:var(--font-mono);font-size:14px;font-weight:600;">
-      </div>
-    </div>
-    <div class="ctrl">
-      <label>Date column</label>
-      <div class="ctrl-inner">
-        <input type="text" id="dateCol" value="timestamp_real"
-          style="flex:1;background:transparent;border:none;outline:none;color:var(--accent);font-family:var(--font-mono);font-size:14px;font-weight:600;">
-      </div>
-    </div>
-    <div class="ctrl">
-      <label>RDL_Status</label>
-      <div class="ctrl-inner">
-        <input type="text" id="rdlStatus" value="RDL_Status"
-          style="flex:1;background:transparent;border:none;outline:none;color:var(--accent);font-family:var(--font-mono);font-size:14px;font-weight:600;">
-      </div>
-    </div>
-    <div class="ctrl">
-      <label>PM_status</label>
-      <div class="ctrl-inner">
-        <input type="text" id="pmStatus" value="PM_status"
-          style="flex:1;background:transparent;border:none;outline:none;color:var(--accent);font-family:var(--font-mono);font-size:14px;font-weight:600;">
-      </div>
-    </div>
   </div>
 
   <button class="run-btn" id="runBtn" disabled>▶ &nbsp; run analysis</button>
-
-  <div class="status" id="status">
-    <div class="status-dot wait"></div>
-    waiting for CSV file...
-  </div>
 
   <!-- SUMMARY STATS -->
   <div class="stats-grid" id="statsGrid" style="display:none;"></div>
@@ -627,10 +596,10 @@ function setStatus(msg, type='ok') {
 async function run() {
   const winSize = parseInt(document.getElementById('window').value);
   const penVal  = parseFloat(document.getElementById('penalty').value);
-  const valCol  = document.getElementById('colName').value.trim();
-  const dateCol = document.getElementById('dateCol').value.trim();
-  const rdlStatus = document.getElementById('rdlStatus').value.trim();//RDL_Status
-  const pmStatus = document.getElementById('pmStatus').value.trim();//PM_status
+  const valCol  = 'PM_N';//document.getElementById('colName').value.trim();
+  const dateCol = 'timestamp_real';//document.getElementById('dateCol').value.trim();
+  const rdlStatus = 'RDL_Status';//document.getElementById('rdlStatus').value.trim();
+  const pmStatus = 'PM_status';//document.getElementById('pmStatus').value.trim();
 
   setStatus('parsing CSV...', 'wait');
   await new Promise(r => setTimeout(r, 20));
